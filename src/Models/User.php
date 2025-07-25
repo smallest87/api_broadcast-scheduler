@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Database;
 use PDO;
+use PDOException; // Import PDOException
 
 class User
 {
@@ -21,6 +22,16 @@ class User
         $this->conn = $db;
     }
 
+    // Metode pembantu untuk sanitasi input
+    private function sanitizeProperties() {
+        // ID tidak perlu di-sanitize dengan strip_tags/htmlspecialchars saat diatur dari URL
+        // Hanya properti yang datang dari input pengguna (POST/PUT body)
+        $this->name = htmlspecialchars(strip_tags($this->name));
+        $this->email = htmlspecialchars(strip_tags($this->email));
+        // Password sudah di-hash, jadi tidak perlu strip_tags/htmlspecialchars di sini
+        // $this->password = htmlspecialchars(strip_tags($this->password));
+    }
+
     public function read()
     {
         $query = "SELECT id, name, email, created_at FROM " . $this->table_name . " ORDER BY created_at DESC";
@@ -34,29 +45,30 @@ class User
         $query = "INSERT INTO " . $this->table_name . " (name, email, password) VALUES (:name, :email, :password)";
         $stmt = $this->conn->prepare($query);
 
-        $this->name = htmlspecialchars(strip_tags($this->name));
-        $this->email = htmlspecialchars(strip_tags($this->email));
-        $this->password = htmlspecialchars(strip_tags($this->password));
+        $this->sanitizeProperties(); // Panggil metode sanitasi
 
         $stmt->bindParam(":name", $this->name);
         $stmt->bindParam(":email", $this->email);
-        $stmt->bindParam(":password", $this->password);
+        $stmt->bindParam(":password", $this->password); // $this->password sudah berupa hash dari controller
 
         try {
-            if ($stmt->execute()) {
-                return true;
-            }
-        } catch (\PDOException $e) {
+            return $stmt->execute();
+        } catch (PDOException $e) {
             error_log("User creation error: " . $e->getMessage());
+            // Jika ada Unique Constraint Violation (misal email duplikat)
+            if ($e->getCode() === '23000') { // SQLSTATE for Integrity Constraint Violation
+                // Kita akan menangani ini di controller dengan userExists() sebelumnya
+                // Jadi di sini cukup false untuk generic failure
+            }
+            return false;
         }
-        return false;
     }
 
     public function readOne()
     {
         $query = "SELECT id, name, email, created_at FROM " . $this->table_name . " WHERE id = ? LIMIT 0,1";
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(1, $this->id);
+        $stmt->bindParam(1, $this->id, PDO::PARAM_INT); // Bind as integer for ID
         $stmt->execute();
 
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -72,21 +84,30 @@ class User
 
     public function update()
     {
-        $query = "UPDATE " . $this->table_name . " SET name = :name, email = :email WHERE id = :id";
+        // Query disesuaikan untuk update password opsional
+        $query = "UPDATE " . $this->table_name . " SET name = :name, email = :email";
+        if ($this->password !== null) { // Jika password disediakan untuk update
+            $query .= ", password = :password";
+        }
+        $query .= " WHERE id = :id";
+
         $stmt = $this->conn->prepare($query);
 
-        $this->name = htmlspecialchars(strip_tags($this->name));
-        $this->email = htmlspecialchars(strip_tags($this->email));
-        $this->id = htmlspecialchars(strip_tags($this->id));
+        $this->sanitizeProperties(); // Panggil metode sanitasi
 
         $stmt->bindParam(':name', $this->name);
         $stmt->bindParam(':email', $this->email);
-        $stmt->bindParam(':id', $this->id);
-
-        if ($stmt->execute()) {
-            return true;
+        if ($this->password !== null) {
+            $stmt->bindParam(':password', $this->password); // Password sudah di-hash
         }
-        return false;
+        $stmt->bindParam(':id', $this->id, PDO::PARAM_INT); // Bind as integer
+
+        try {
+            return $stmt->execute();
+        } catch (PDOException $e) {
+            error_log("User update error: " . $e->getMessage());
+            return false;
+        }
     }
 
     public function delete()
@@ -94,14 +115,14 @@ class User
         $query = "DELETE FROM " . $this->table_name . " WHERE id = ?";
         $stmt = $this->conn->prepare($query);
 
-        $this->id = htmlspecialchars(strip_tags($this->id));
+        $stmt->bindParam(1, $this->id, PDO::PARAM_INT); // Bind as integer
 
-        $stmt->bindParam(1, $this->id);
-
-        if ($stmt->execute()) {
-            return true;
+        try {
+            return $stmt->execute();
+        } catch (PDOException $e) {
+            error_log("User deletion error: " . $e->getMessage());
+            return false;
         }
-        return false;
     }
 
     public function userExists() {

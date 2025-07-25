@@ -4,6 +4,7 @@ namespace App;
 
 use PDO;
 use PDOException;
+// use Dotenv\Dotenv; // Hapus import Dotenv
 
 class Database
 {
@@ -15,16 +16,14 @@ class Database
 
     public function __construct()
     {
-        // KREDENSIAL DATABASE DI-HARDCODE AGAR KONEKSI BERHASIL
-        // Ini adalah solusi sementara jika .env tidak terbaca di server Anda.
-        // HANYA UNTUK PENGUJIAN. Jangan gunakan di produksi.
-        $this->host = '127.0.0.1';
-        $this->db_name = 'restapidb'; // PASTIKAN NAMA DATABASE ANDA BENAR DI SINI!
-        $this->username = 'admin-api';
-        $this->password = 'HitamKan23@#';
+        // Gunakan kredensial langsung (tidak disarankan untuk produksi)
+        $this->host = '127.0.0.1'; // Ganti dengan host database Anda
+        $this->db_name = 'restapidb'; // Ganti dengan nama database Anda
+        $this->username = 'admin-api'; // Ganti dengan username database Anda
+        $this->password = 'HitamKan23@#'; // Ganti dengan password database Anda
     }
 
-    public function getConnection()
+    public function getConnection(): ?PDO
     {
         $this->conn = null;
 
@@ -37,8 +36,10 @@ class Database
             $this->conn->exec("set names utf8");
             $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         } catch (PDOException $exception) {
-            echo "Connection error: " . $exception->getMessage();
-            exit(); // Terminate if connection fails
+            // Log error koneksi database
+            error_log("[Database Error] Connection failed: " . $exception->getMessage());
+            // Lemparkan kembali exception agar ditangani oleh global exception handler atau controller
+            throw $exception;
         }
 
         return $this->conn;

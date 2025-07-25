@@ -30,10 +30,11 @@ class Router
             $path = rtrim($path, '/');
         }
 
-        if ($method === 'OPTIONS') {
-            http_response_code(200);
-            exit();
-        }
+        // Penanganan OPTIONS method dipindahkan ke index.php untuk efisiensi CORS
+        // if ($method === 'OPTIONS') {
+        //     http_response_code(200);
+        //     exit();
+        // }
 
         foreach ($this->routes as $route) {
             $pattern = preg_replace('/\{([a-zA-Z0-9_]+)\}/', '([a-zA-Z0-9_]+)', $route['path']);
