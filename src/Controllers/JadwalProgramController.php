@@ -29,10 +29,10 @@ class JadwalProgramController extends BaseController // Extend BaseController
                 extract($row);
                 $jadwal_item = [
                     "id" => $id,
-                    "durasi" => $durasi,
-                    "segmen" => $segmen,
-                    "jenis" => $jenis,
-                    "waktu_siar" => $waktu_siar // Pastikan properti ini ada di model
+                    "schedule_item_duration" => $schedule_item_duration,
+                    "schedule_item_title" => $schedule_item_title,
+                    "schedule_item_type" => $schedule_item_type,
+                    "schedule_onair" => $schedule_onair // Pastikan properti ini ada di model
                 ];
                 array_push($jadwal_arr['data'], $jadwal_item);
             }
@@ -53,10 +53,10 @@ class JadwalProgramController extends BaseController // Extend BaseController
         if ($this->jadwalProgram->readOne()) {
             $jadwal_item = [
                 "id" => $this->jadwalProgram->id,
-                "durasi" => $this->jadwalProgram->durasi,
-                "segmen" => $this->jadwalProgram->segmen,
-                "jenis" => $this->jadwalProgram->jenis,
-                "waktu_siar" => $this->jadwalProgram->waktu_siar // Pastikan properti ini ada di model
+                "schedule_item_duration" => $this->jadwalProgram->schedule_item_duration,
+                "schedule_item_title" => $this->jadwalProgram->schedule_item_title,
+                "schedule_item_type" => $this->jadwalProgram->schedule_item_type,
+                "schedule_onair" => $this->jadwalProgram->schedule_onair // Pastikan properti ini ada di model
             ];
             http_response_code(200);
             echo json_encode($jadwal_item);
@@ -71,15 +71,15 @@ class JadwalProgramController extends BaseController // Extend BaseController
     {
         $data = $this->getJsonInput(); // Gunakan metode dari BaseController
 
-        if (empty($data->durasi) || empty($data->segmen) || empty($data->jenis)) {
+        if (empty($data->schedule_item_duration) || empty($data->schedule_item_title) || empty($data->schedule_item_type)) {
             http_response_code(400);
             echo json_encode(["message" => "Unable to create jadwal program. Data is incomplete. Please provide durasi, segmen, and jenis."]);
             return;
         }
 
-        $this->jadwalProgram->durasi = $data->durasi;
-        $this->jadwalProgram->segmen = $data->segmen;
-        $this->jadwalProgram->jenis = $data->jenis;
+        $this->jadwalProgram->schedule_item_duration = $data->durasi;
+        $this->jadwalProgram->schedule_item_title = $data->schedule_item_title;
+        $this->jadwalProgram->schedule_item_type = $data->schedule_item_type;
 
         if ($this->jadwalProgram->create()) {
             http_response_code(201);
@@ -95,7 +95,7 @@ class JadwalProgramController extends BaseController // Extend BaseController
     {
         $data = $this->getJsonInput(); // Gunakan metode dari BaseController
 
-        if (empty($id) || (empty($data->durasi) && empty($data->segmen) && empty($data->jenis))) {
+        if (empty($id) || (empty($data->schedule_item_duration) && empty($data->schedule_item_title) && empty($data->schedule_item_type))) {
             http_response_code(400);
             echo json_encode(["message" => "Unable to update jadwal program. Provide ID and at least one field."]);
             return;
@@ -108,9 +108,9 @@ class JadwalProgramController extends BaseController // Extend BaseController
             return;
         }
 
-        $this->jadwalProgram->durasi = !empty($data->durasi) ? $data->durasi : $this->jadwalProgram->durasi;
-        $this->jadwalProgram->segmen = !empty($data->segmen) ? $data->segmen : $this->jadwalProgram->segmen;
-        $this->jadwalProgram->jenis = !empty($data->jenis) ? $data->jenis : $this->jadwalProgram->jenis;
+        $this->jadwalProgram->durschedule_item_durationasi = !empty($data->schedule_item_duration) ? $data->schedule_item_duration : $this->jadwalProgram->schedule_item_duration;
+        $this->jadwalProgram->schedule_item_title = !empty($data->schedule_item_title) ? $data->schedule_item_title : $this->jadwalProgram->schedule_item_title;
+        $this->jadwalProgram->schedule_item_type = !empty($data->schedule_item_type) ? $data->schedule_item_type : $this->jadwalProgram->schedule_item_type;
 
         if ($this->jadwalProgram->update()) {
             http_response_code(200);
