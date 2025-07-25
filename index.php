@@ -1,8 +1,8 @@
 <?php
 
-// Nonaktifkan pelaporan error dan display_errors untuk produksi
-// error_reporting(E_ALL);
-// ini_set('display_errors', 1);
+// Aktifkan pelaporan error dan display_errors untuk debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
 // Konfigurasi CORS (Sesuaikan di produksi untuk domain spesifik Anda)
 header("Access-Control-Allow-Origin: *");
@@ -18,7 +18,6 @@ use App\Database;
 use App\Controllers\UserController;
 use App\Controllers\JadwalProgramController;
 use App\Controllers\UserSettingsController;
-// use App\Models\User; // Tidak perlu diimpor di sini lagi
 
 // Menangani permintaan OPTIONS (preflight CORS) lebih awal
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -29,57 +28,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // Global Exception Handler untuk menangani semua uncaught exceptions
 set_exception_handler(function ($exception) {
     http_response_code(500);
+    $errorMessage = "Internal Server Error. Please try again later.";
+    // Tampilkan detail error hanya di lingkungan development
+    if (ini_get('display_errors') == 1) {
+        $errorMessage .= " Details: " . $exception->getMessage() . " in " . $exception->getFile() . " on line " . $exception->getLine();
+    }
     echo json_encode([
         "status" => "error",
-        "message" => "Internal Server Error. Please try again later.",
-        // "details" => $exception->getMessage() // HANYA untuk development
+        "message" => $errorMessage,
     ]);
-    error_log("Unhandled exception: " . $exception->getMessage() . " in " . $exception->getFile() . " on line " . $exception->getLine());
+    error_log("[Global Error Handler] Unhandled exception: " . $exception->getMessage() . " in " . $exception->getFile() . " on line " . $exception->getLine());
     exit();
 });
 
-// Endpoint untuk status API dan koneksi database (dipindahkan ke rute)
-// Ini akan ditangani oleh router sekarang, bukan kondisi if di root
-// Jika Anda ingin endpoint status tetap di root, Anda perlu logic terpisah atau
-// membiarkan router mencoba mencocokkan '/'
-
+// Inisialisasi Router
 $router = new Router();
 
-// Rute API untuk Status/Health Check
-// Ini menggantikan blok if ($_SERVER['REQUEST_URI'] === '/' ...) yang lama
+// Rute API untuk Status/Health Check dengan logging detail
 $router->addRoute('GET', '/', function() {
+    error_log("[Status Check] Starting API status check.");
+
     $db_connection_status = "Tidak terkoneksi";
     $users_table_status = "Tidak dapat memeriksa tabel karena koneksi gagal.";
     $jadwal_table_status = "Tidak dapat memeriksa tabel karena koneksi gagal.";
     $settings_table_status = "Tidak dapat memeriksa tabel karena koneksi gagal.";
 
     try {
+        error_log("[Status Check] Attempting to get database connection.");
         $database = new Database();
         $conn = $database->getConnection(); // Potensi melempar PDOException
+        error_log("[Status Check] Database connection attempt completed.");
 
         if ($conn) {
             $db_connection_status = "Berhasil terkoneksi dengan database!";
+            error_log("[Status Check] Database connection successful.");
 
             // Test if 'users' table exists
+            error_log("[Status Check] Checking 'users' table existence.");
             $stmt_users = $conn->query("SHOW TABLES LIKE 'users'");
             $users_table_status = $stmt_users->rowCount() > 0 ? "Tabel 'users' terdeteksi." : "Tabel 'users' TIDAK ditemukan. Mohon buat tabelnya.";
+            error_log("[Status Check] 'users' table status: " . $users_table_status);
 
             // Test if 'jadwal_program' table exists
+            error_log("[Status Check] Checking 'jadwal_program' table existence.");
             $stmt_jadwal = $conn->query("SHOW TABLES LIKE 'jadwal_program'");
             $jadwal_table_status = $stmt_jadwal->rowCount() > 0 ? "Tabel 'jadwal_program' terdeteksi." : "Tabel 'jadwal_program' TIDAK ditemukan. Mohon buat tabelnya.";
+            error_log("[Status Check] 'jadwal_program' table status: " . $jadwal_table_status);
 
             // Test if 'user_settings' table exists
+            error_log("[Status Check] Checking 'user_settings' table existence.");
             $stmt_settings = $conn->query("SHOW TABLES LIKE 'user_settings'");
             $settings_table_status = $stmt_settings->rowCount() > 0 ? "Tabel 'user_settings' terdeteksi." : "Tabel 'user_settings' TIDAK ditemukan. Mohon buat tabelnya.";
+            error_log("[Status Check] 'user_settings' table status: " . $settings_table_status);
 
+        } else {
+             error_log("[Status Check] Database connection object is null despite no exception.");
+             $db_connection_status = "Gagal terkoneksi database: Objek koneksi null.";
         }
     } catch (\PDOException $e) { // Catch specific PDOException
+        error_log("[Status Check] PDOException caught during DB connection/table check: " . $e->getMessage());
         $db_connection_status = "Gagal terkoneksi database: " . $e->getMessage();
-        $users_table_status = "Tidak dapat memeriksa tabel karena koneksi gagal.";
-        $jadwal_table_status = "Tidak dapat memeriksa tabel karena koneksi gagal.";
-        $settings_table_status = "Tidak dapat memeriksa tabel karena koneksi gagal.";
+        $users_table_status = "Tidak dapat memeriksa tabel karena koneksi gagal: " . $e->getMessage();
+        $jadwal_table_status = "Tidak dapat memeriksa tabel karena koneksi gagal: " . $e->getMessage();
+        $settings_table_status = "Tidak dapat memeriksa tabel karena koneksi gagal: " . $e->getMessage();
+    } catch (\Throwable $e) { // Catch any other throwable errors
+        error_log("[Status Check] General error caught during DB connection/table check: " . $e->getMessage());
+        $db_connection_status = "Terjadi kesalahan tak terduga: " . $e->getMessage();
+        $users_table_status = $db_connection_status;
+        $jadwal_table_status = $db_connection_status;
+        $settings_table_status = $db_connection_status;
     }
 
+    error_log("[Status Check] API status check completed. Responding to client.");
     echo json_encode([
         "status" => "API is running",
         "database_connection" => $db_connection_status,
