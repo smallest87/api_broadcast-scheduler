@@ -5,15 +5,13 @@ namespace App\Controllers;
 use App\Models\JadwalProgram;
 use App\Database;
 
-class JadwalProgramController
+class JadwalProgramController extends BaseController // Extend BaseController
 {
-    private $db;
     private $jadwalProgram;
 
     public function __construct()
     {
-        $database = new Database();
-        $this->db = $database->getConnection();
+        parent::__construct(); // Panggil konstruktor BaseController
         $this->jadwalProgram = new JadwalProgram($this->db);
     }
 
@@ -34,7 +32,7 @@ class JadwalProgramController
                     "durasi" => $durasi,
                     "segmen" => $segmen,
                     "jenis" => $jenis,
-                    "waktu_siar" => $waktu_siar
+                    "waktu_siar" => $waktu_siar // Pastikan properti ini ada di model
                 ];
                 array_push($jadwal_arr['data'], $jadwal_item);
             }
@@ -42,8 +40,9 @@ class JadwalProgramController
             http_response_code(200);
             echo json_encode($jadwal_arr);
         } else {
-            http_response_code(404);
-            echo json_encode(["message" => "No jadwal programs found."]);
+            // Lebih baik 200 OK dengan array kosong untuk koleksi
+            http_response_code(200);
+            echo json_encode(["message" => "No jadwal programs found.", "data" => []]);
         }
     }
 
@@ -57,7 +56,7 @@ class JadwalProgramController
                 "durasi" => $this->jadwalProgram->durasi,
                 "segmen" => $this->jadwalProgram->segmen,
                 "jenis" => $this->jadwalProgram->jenis,
-                "waktu_siar" => $this->jadwalProgram->waktu_siar
+                "waktu_siar" => $this->jadwalProgram->waktu_siar // Pastikan properti ini ada di model
             ];
             http_response_code(200);
             echo json_encode($jadwal_item);
@@ -70,7 +69,7 @@ class JadwalProgramController
     // Create a jadwal program
     public function store()
     {
-        $data = json_decode(file_get_contents("php://input"));
+        $data = $this->getJsonInput(); // Gunakan metode dari BaseController
 
         if (empty($data->durasi) || empty($data->segmen) || empty($data->jenis)) {
             http_response_code(400);
@@ -94,7 +93,7 @@ class JadwalProgramController
     // Update a jadwal program
     public function update($id)
     {
-        $data = json_decode(file_get_contents("php://input"));
+        $data = $this->getJsonInput(); // Gunakan metode dari BaseController
 
         if (empty($id) || (empty($data->durasi) && empty($data->segmen) && empty($data->jenis))) {
             http_response_code(400);

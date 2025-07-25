@@ -23,6 +23,13 @@ class UserSettings
         $this->conn = $db;
     }
 
+    // Metode pembantu untuk sanitasi input
+    private function sanitizeProperties() {
+        $this->setting_key = htmlspecialchars(strip_tags($this->setting_key));
+        $this->theme = htmlspecialchars(strip_tags($this->theme));
+        $this->start_time = htmlspecialchars(strip_tags($this->start_time));
+    }
+
     // Read all user settings
     public function read()
     {
@@ -35,14 +42,10 @@ class UserSettings
     // Create a new user setting
     public function create()
     {
-        // created_at and updated_at are handled by MySQL's DEFAULT CURRENT_TIMESTAMP
         $query = "INSERT INTO " . $this->table_name . " (setting_key, theme, start_time) VALUES (:setting_key, :theme, :start_time)";
         $stmt = $this->conn->prepare($query);
 
-        // Sanitize data
-        $this->setting_key = htmlspecialchars(strip_tags($this->setting_key));
-        $this->theme = htmlspecialchars(strip_tags($this->theme));
-        $this->start_time = htmlspecialchars(strip_tags($this->start_time));
+        $this->sanitizeProperties(); // Panggil metode sanitasi
 
         // Bind values
         $stmt->bindParam(":setting_key", $this->setting_key);
@@ -50,13 +53,12 @@ class UserSettings
         $stmt->bindParam(":start_time", $this->start_time);
 
         try {
-            if ($stmt->execute()) {
-                return true;
-            }
+            return $stmt->execute();
         } catch (PDOException $e) {
             error_log("UserSettings creation error: " . $e->getMessage());
+            // Pertimbangkan untuk menangani error duplikat setting_key jika ini harus unik
+            return false;
         }
-        return false;
     }
 
     // Read a single user setting by ID
@@ -64,7 +66,7 @@ class UserSettings
     {
         $query = "SELECT id, setting_key, theme, start_time, created_at, updated_at FROM " . $this->table_name . " WHERE id = ? LIMIT 0,1";
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(1, $this->id);
+        $stmt->bindParam(1, $this->id, PDO::PARAM_INT); // Bind as integer
         $stmt->execute();
 
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -79,7 +81,7 @@ class UserSettings
         }
         return false;
     }
-    
+
     // Read a single user setting by setting_key (e.g. for unique settings)
     public function readByKey()
     {
@@ -91,7 +93,7 @@ class UserSettings
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($row) {
-            $this->id = $row['id']; // Make sure to set the ID too
+            $this->id = $row['id'];
             $this->setting_key = $row['setting_key'];
             $this->theme = $row['theme'];
             $this->start_time = $row['start_time'];
@@ -105,24 +107,26 @@ class UserSettings
     // Update a user setting
     public function update()
     {
-        // updated_at is handled by MySQL's ON UPDATE CURRENT_TIMESTAMP
         $query = "UPDATE " . $this->table_name . " SET theme = :theme, start_time = :start_time WHERE id = :id";
         $stmt = $this->conn->prepare($query);
 
-        // Sanitize
+        // Sanitize properti yang akan diupdate
         $this->theme = htmlspecialchars(strip_tags($this->theme));
         $this->start_time = htmlspecialchars(strip_tags($this->start_time));
-        $this->id = htmlspecialchars(strip_tags($this->id));
+        // ID sudah di-sanitize di controller jika dari URL
+        // $this->id = htmlspecialchars(strip_tags($this->id));
 
         // Bind values
         $stmt->bindParam(':theme', $this->theme);
         $stmt->bindParam(':start_time', $this->start_time);
-        $stmt->bindParam(':id', $this->id);
+        $stmt->bindParam(':id', $this->id, PDO::PARAM_INT); // Bind as integer
 
-        if ($stmt->execute()) {
-            return true;
+        try {
+            return $stmt->execute();
+        } catch (PDOException $e) {
+            error_log("UserSettings update error: " . $e->getMessage());
+            return false;
         }
-        return false;
     }
 
     // Update a user setting by setting_key
@@ -131,6 +135,7 @@ class UserSettings
         $query = "UPDATE " . $this->table_name . " SET theme = :theme, start_time = :start_time WHERE setting_key = :setting_key";
         $stmt = $this->conn->prepare($query);
 
+        // Sanitize properti yang akan diupdate
         $this->theme = htmlspecialchars(strip_tags($this->theme));
         $this->start_time = htmlspecialchars(strip_tags($this->start_time));
         $this->setting_key = htmlspecialchars(strip_tags($this->setting_key));
@@ -139,10 +144,12 @@ class UserSettings
         $stmt->bindParam(':start_time', $this->start_time);
         $stmt->bindParam(':setting_key', $this->setting_key);
 
-        if ($stmt->execute()) {
-            return true;
+        try {
+            return $stmt->execute();
+        } catch (PDOException $e) {
+            error_log("UserSettings update by key error: " . $e->getMessage());
+            return false;
         }
-        return false;
     }
 
     // Delete a user setting
@@ -151,15 +158,13 @@ class UserSettings
         $query = "DELETE FROM " . $this->table_name . " WHERE id = ?";
         $stmt = $this->conn->prepare($query);
 
-        // Sanitize
-        $this->id = htmlspecialchars(strip_tags($this->id));
+        $stmt->bindParam(1, $this->id, PDO::PARAM_INT); // Bind as integer
 
-        // Bind value
-        $stmt->bindParam(1, $this->id);
-
-        if ($stmt->execute()) {
-            return true;
+        try {
+            return $stmt->execute();
+        } catch (PDOException $e) {
+            error_log("UserSettings deletion error: " . $e->getMessage());
+            return false;
         }
-        return false;
     }
 }

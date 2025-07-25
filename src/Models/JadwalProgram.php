@@ -15,16 +15,25 @@ class JadwalProgram
     public $durasi;
     public $segmen;
     public $jenis;
+    public $waktu_siar; [cite_start]// <-- Ditambahkan [cite: 2]
 
     public function __construct($db)
     {
         $this->conn = $db;
     }
 
+    // Metode pembantu untuk sanitasi input
+    private function sanitizeProperties() {
+        $this->durasi = htmlspecialchars(strip_tags($this->durasi));
+        $this->segmen = htmlspecialchars(strip_tags($this->segmen));
+        $this->jenis = htmlspecialchars(strip_tags($this->jenis));
+        // waktu_siar umumnya dari DB atau fungsi waktu, tidak perlu di-sanitize seperti input teks
+    }
+
     // Read all jadwal programs
     public function read()
     {
-        $query = "SELECT id, durasi, segmen, jenis,waktu_siar FROM " . $this->table_name . " ORDER BY id ASC";
+        $query = "SELECT id, durasi, segmen, jenis, waktu_siar FROM " . $this->table_name . " ORDER BY id ASC";
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
         return $stmt;
@@ -36,10 +45,7 @@ class JadwalProgram
         $query = "INSERT INTO " . $this->table_name . " (durasi, segmen, jenis) VALUES (:durasi, :segmen, :jenis)";
         $stmt = $this->conn->prepare($query);
 
-        // Sanitize data
-        $this->durasi = htmlspecialchars(strip_tags($this->durasi));
-        $this->segmen = htmlspecialchars(strip_tags($this->segmen));
-        $this->jenis = htmlspecialchars(strip_tags($this->jenis));
+        $this->sanitizeProperties(); // Panggil metode sanitasi
 
         // Bind values
         $stmt->bindParam(":durasi", $this->durasi);
@@ -47,21 +53,20 @@ class JadwalProgram
         $stmt->bindParam(":jenis", $this->jenis);
 
         try {
-            if ($stmt->execute()) {
-                return true;
-            }
+            return $stmt->execute();
         } catch (PDOException $e) {
             error_log("JadwalProgram creation error: " . $e->getMessage());
+            return false;
         }
-        return false;
     }
 
     // Read a single jadwal program by ID
     public function readOne()
     {
-        $query = "SELECT id, durasi, segmen, jenis FROM " . $this->table_name . " WHERE id = ? LIMIT 0,1";
+        // Pastikan waktu_siar diambil di sini juga
+        $query = "SELECT id, durasi, segmen, jenis, waktu_siar FROM " . $this->table_name . " WHERE id = ? LIMIT 0,1";
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(1, $this->id);
+        $stmt->bindParam(1, $this->id, PDO::PARAM_INT); // Bind as integer
         $stmt->execute();
 
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -70,6 +75,7 @@ class JadwalProgram
             $this->durasi = $row['durasi'];
             $this->segmen = $row['segmen'];
             $this->jenis = $row['jenis'];
+            $this->waktu_siar = $row['waktu_siar']; // Set properti ini
             return true;
         }
         return false;
@@ -81,22 +87,20 @@ class JadwalProgram
         $query = "UPDATE " . $this->table_name . " SET durasi = :durasi, segmen = :segmen, jenis = :jenis WHERE id = :id";
         $stmt = $this->conn->prepare($query);
 
-        // Sanitize
-        $this->durasi = htmlspecialchars(strip_tags($this->durasi));
-        $this->segmen = htmlspecialchars(strip_tags($this->segmen));
-        $this->jenis = htmlspecialchars(strip_tags($this->jenis));
-        $this->id = htmlspecialchars(strip_tags($this->id));
+        $this->sanitizeProperties(); // Panggil metode sanitasi
 
         // Bind values
         $stmt->bindParam(':durasi', $this->durasi);
         $stmt->bindParam(':segmen', $this->segmen);
         $stmt->bindParam(':jenis', $this->jenis);
-        $stmt->bindParam(':id', $this->id);
+        $stmt->bindParam(':id', $this->id, PDO::PARAM_INT); // Bind as integer
 
-        if ($stmt->execute()) {
-            return true;
+        try {
+            return $stmt->execute();
+        } catch (PDOException $e) {
+            error_log("JadwalProgram update error: " . $e->getMessage());
+            return false;
         }
-        return false;
     }
 
     // Delete a jadwal program
@@ -105,15 +109,13 @@ class JadwalProgram
         $query = "DELETE FROM " . $this->table_name . " WHERE id = ?";
         $stmt = $this->conn->prepare($query);
 
-        // Sanitize
-        $this->id = htmlspecialchars(strip_tags($this->id));
+        $stmt->bindParam(1, $this->id, PDO::PARAM_INT); // Bind as integer
 
-        // Bind value
-        $stmt->bindParam(1, $this->id);
-
-        if ($stmt->execute()) {
-            return true;
+        try {
+            return $stmt->execute();
+        } catch (PDOException $e) {
+            error_log("JadwalProgram deletion error: " . $e->getMessage());
+            return false;
         }
-        return false;
     }
 }
