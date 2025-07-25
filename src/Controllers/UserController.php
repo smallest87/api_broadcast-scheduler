@@ -167,9 +167,12 @@ class UserController extends BaseController // Extend BaseController
         if ($this->user->userExists()) {
             // Password yang diambil dari DB sudah dalam bentuk hash
             if (password_verify($data->password, $this->user->password)) {
-                $secret_key = $_ENV['JWT_SECRET_KEY']; [cite_start]// Ambil dari .env [cite: 1]
-                $issuer = $_ENV['JWT_ISSUER'] ?? "https://api.newsnoid.com"; // Bisa juga dari .env
-                $audience = $_ENV['JWT_AUDIENCE'] ?? "https://api.newsnoid.com"; // Bisa juga dari .env
+                // Hardcode JWT_SECRET_KEY, JWT_ISSUER, JWT_AUDIENCE untuk debugging
+                // JANGAN GUNAKAN INI DI PRODUKSI!
+                $secret_key = "kunci_rahasia_jwt_yang_sangat_panjang_dan_acak"; // Ganti dengan kunci kuat
+                $issuer = "https://api.newsnoid.com";
+                $audience = "https://api.newsnoid.com";
+
                 $issued_at = time();
                 $expiration_time = $issued_at + (3600 * 24); // Token berlaku 24 jam
 
