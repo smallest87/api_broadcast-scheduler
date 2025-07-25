@@ -73,15 +73,35 @@
             text-align: center;
             color: #333;
         }
+        /* --- Perubahan Gaya Form dalam Modal --- */
+        .form-group { /* Wrapper untuk setiap label + input */
+            margin-bottom: 15px; /* Spasi antar baris form */
+        }
         .modal-content form label {
-            margin-bottom: 5px;
+            display: block; /* Pastikan label di baris baru */
+            margin-bottom: 5px; /* Spasi antara label dan input */
+            font-weight: bold; /* Mirip dengan header tabel */
+            color: #555;
         }
         .modal-content form input[type="text"],
         .modal-content form input[type="date"],
         .modal-content form input[type="datetime-local"],
         .modal-content form input[type="time"] {
-            width: calc(100% - 20px);
+            width: 100%; /* Lebar penuh dalam container form-group */
+            padding: 10px; /* Padding mirip sel tabel */
+            border: 1px solid #ccc; /* Border sedikit lebih terang dari tabel */
+            border-radius: 4px;
+            box-sizing: border-box; /* Pastikan padding dan border tidak menambah lebar */
+            background-color: #fcfcfc; /* Warna latar belakang field */
+            font-size: 16px;
         }
+        .modal-content form input:focus {
+            border-color: #007bff; /* Warna border saat fokus */
+            outline: none; /* Hapus outline default browser */
+            box-shadow: 0 0 0 0.1rem rgba(0, 123, 255, 0.25); /* Efek bayangan saat fokus */
+        }
+        /* --- Akhir Perubahan Gaya Form dalam Modal --- */
+
         .modal-buttons {
             text-align: right;
             margin-top: 20px;
@@ -266,23 +286,34 @@
             <form id="editForm">
                 <input type="hidden" id="edit-id" name="id">
 
-                <label for="edit-schedule_item_duration">Durasi Program (HH:MM):</label>
-                <input type="time" id="edit-schedule_item_duration" name="schedule_item_duration" step="1" required><br>
+                <div class="form-group"> <label for="edit-schedule_item_duration">Durasi Program (HH:MM):</label>
+                    <input type="time" id="edit-schedule_item_duration" name="schedule_item_duration" step="1" required>
+                </div>
 
-                <label for="edit-schedule_item_title">Judul Segmen:</label>
-                <input type="text" id="edit-schedule_item_title" name="schedule_item_title" required><br>
+                <div class="form-group">
+                    <label for="edit-schedule_item_title">Judul Segmen:</label>
+                    <input type="text" id="edit-schedule_item_title" name="schedule_item_title" required>
+                </div>
 
-                <label for="edit-schedule_item_type">Tipe Program:</label>
-                <input type="text" id="edit-schedule_item_type" name="schedule_item_type" required><br>
+                <div class="form-group">
+                    <label for="edit-schedule_item_type">Tipe Program:</label>
+                    <input type="text" id="edit-schedule_item_type" name="schedule_item_type" required>
+                </div>
 
-                <label for="edit-tgl_siaran">Tanggal Siaran:</label>
-                <input type="date" id="edit-tgl_siaran" name="tgl_siaran" required><br>
+                <div class="form-group">
+                    <label for="edit-tgl_siaran">Tanggal Siaran:</label>
+                    <input type="date" id="edit-tgl_siaran" name="tgl_siaran" required>
+                </div>
 
-                <label for="edit-schedule_onair">Waktu Siaran (Tanggal & Jam):</label>
-                <input type="datetime-local" id="edit-schedule_onair" name="schedule_onair" required><br>
+                <div class="form-group">
+                    <label for="edit-schedule_onair">Waktu Siaran (Tanggal & Jam):</label>
+                    <input type="datetime-local" id="edit-schedule_onair" name="schedule_onair" required>
+                </div>
 
-                <label for="edit-schedule_author">Penulis Jadwal:</label>
-                <input type="text" id="edit-schedule_author" name="schedule_author" required><br>
+                <div class="form-group">
+                    <label for="edit-schedule_author">Penulis Jadwal:</label>
+                    <input type="text" id="edit-schedule_author" name="schedule_author" required>
+                </div>
 
                 <div class="modal-buttons">
                     <button type="button" class="cancel-button" onclick="closeEditModal()">Batal</button>
@@ -339,22 +370,13 @@
                 jsonData.schedule_item_duration += ':00';
             }
 
-            // Perbaikan format datetime-local jika diperlukan (sudah diatur oleh type="datetime-local")
-            // Input type="datetime-local" sudah mengirim YYYY-MM-DDTHH:MM, yang perlu diubah ke YYYY-MM-DD HH:MM:SS untuk DB
-            // Di sini, kita sudah melakukan format di PHP saat mengisi modal, jadi input sudah benar.
-            // Namun, jika ada kasus input manual, pastikan formatnya.
-
             const recordId = jsonData.id; // Ambil ID dari hidden field
             delete jsonData.id; // Hapus ID dari payload yang akan dikirim (karena ID ada di URL untuk PUT)
 
             console.log("Data to update (JSON):", jsonData);
             console.log("Updating record with ID:", recordId);
-            // Anda bisa menampilkan ini di log debug HTML jika mau, atau di konsol browser
 
             // --- Lakukan Panggilan API PUT di SINI ---
-            // Contoh menggunakan Fetch API (paling umum di JavaScript)
-            // Jika Anda ingin menggunakan PHP cURL untuk PUT, Anda harus submit form ini ke halaman PHP itu sendiri
-            // dan PHP tersebut yang akan melakukan cURL request PUT.
             fetch(`https://api.newsnoid.com/jadwal-program/${recordId}`, {
                 method: 'PUT',
                 headers: {
@@ -364,7 +386,6 @@
             })
             .then(response => {
                 if (!response.ok) {
-                    // Jika respons bukan 2xx (misal 400, 404, 500), lempar error
                     return response.json().then(errData => { throw new Error(errData.message || `HTTP error! status: ${response.status}`); });
                 }
                 return response.json();
