@@ -86,7 +86,8 @@
         .modal-content form input[type="text"],
         .modal-content form input[type="date"],
         .modal-content form input[type="datetime-local"],
-        .modal-content form input[type="time"] {
+        .modal-content form input[type="time"],
+        .modal-content form select { /* Added select here */
             width: 100%; /* Lebar penuh dalam container form-group */
             padding: 10px; /* Padding mirip sel tabel */
             border: 1px solid #ccc; /* Border sedikit lebih terang dari tabel */
@@ -95,7 +96,8 @@
             background-color: #fcfcfc; /* Warna latar belakang field */
             font-size: 16px;
         }
-        .modal-content form input:focus {
+        .modal-content form input:focus,
+        .modal-content form select:focus { /* Added select here */
             border-color: #007bff; /* Warna border saat fokus */
             outline: none; /* Hapus outline default browser */
             box-shadow: 0 0 0 0.1rem rgba(0, 123, 255, 0.25); /* Efek bayangan saat fokus */
@@ -137,7 +139,7 @@
 
     <div class="container">
         <div class="add-button-container">
-            <a href="add_jadwal.php" class="add-button">Tambah Jadwal Baru</a>
+            <button class="add-button" onclick="openAddModal()">Tambah Jadwal Baru</button>
         </div>
 
         <?php
@@ -151,6 +153,7 @@
             $debug_output[] = date('Y-m-d H:i:s') . " - " . $message;
         }
 
+        // --- Fetch Jadwal Program Data ---
         $api_url = 'https://api.newsnoid.com/jadwal-program'; // URL API GET ALL
         log_message("Mengambil data dari API: " . $api_url);
 
@@ -207,13 +210,54 @@
             }
         }
 
+        // --- Fetch User Data for Dropdown ---
+        $user_api_url = 'https://api.newsnoid.com/users'; // Adjust this to your actual user API endpoint
+        log_message("Mengambil data dari API user: " . $user_api_url);
+
+        $ch_user = curl_init($user_api_url);
+        curl_setopt($ch_user, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch_user, CURLOPT_FOLLOWLOCATION, true);
+        // curl_setopt($ch_user, CURLOPT_SSL_VERIFYPEER, false); // ONLY if you face SSL issues and understand the risk
+        // curl_setopt($ch_user, CURLOPT_SSL_VERIFYHOST, false);
+
+        $user_response = curl_exec($ch_user);
+        $user_http_code = curl_getinfo($ch_user, CURLINFO_HTTP_CODE);
+        $user_curl_error = curl_error($ch_user);
+        $user_curl_errno = curl_errno($ch_user);
+        curl_close($ch_user);
+
+        log_message("User API cURL execution completed.");
+        log_message("User API HTTP Status Code received: " . $user_http_code);
+        log_message("User API cURL Error (if any): [{$user_curl_errno}] " . ($user_curl_error ? $user_curl_error : 'No error'));
+        log_message("Raw User API Response: " . ($user_response ? $user_response : 'Empty response'));
+
+        $users = [];
+        if ($user_response === false) {
+            log_message("User API cURL FAILED: [{$user_curl_errno}] " . $user_curl_error);
+        } else {
+            $user_response_data = json_decode($user_response);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                log_message("User API JSON decode FAILED: " . json_last_error_msg());
+            } else {
+                log_message("Decoded User API Response (Object):");
+                log_message($user_response_data);
+                if ($user_http_code == 200 && isset($user_response_data->data) && is_array($user_response_data->data)) {
+                    $users = $user_response_data->data;
+                    log_message("Successfully loaded " . count($users) . " users.");
+                } else {
+                    log_message("Failed to retrieve user data from API. HTTP Status: " . $user_http_code . ". Message: " . ($user_response_data->message ?? 'Unknown error.'));
+                }
+            }
+        }
+
         if (!empty($message)) {
             echo "<div class='message {$message_type}'>" . $message . "</div>";
         }
 
         if (!empty($jadwal_programs)):
         ?>
-        <div class="table-responsive"> <table>
+        <div class="table-responsive">
+            <table>
                 <thead>
                     <tr>
                         <th>ID</th>
@@ -249,7 +293,8 @@
                         <td><?php echo htmlspecialchars($jadwal->schedule_item_type ?? ''); ?></td>
                         <td><?php echo htmlspecialchars($jadwal->tgl_siaran ?? ''); ?></td>
                         <td><?php echo htmlspecialchars($jadwal->schedule_onair ?? ''); ?></td>
-                        <td><?php echo htmlspecialchars($jadwal->author_name ?? 'N/A'); ?></td> <td class="action-buttons">
+                        <td><?php echo htmlspecialchars($jadwal->author_name ?? 'N/A'); ?></td>
+                        <td class="action-buttons">
                             <button onclick="openEditModal(
                                 '<?php echo htmlspecialchars($jadwal->id ?? ''); ?>',
                                 '<?php echo htmlspecialchars($display_duration); ?>',
@@ -264,7 +309,8 @@
                     <?php endforeach; ?>
                 </tbody>
             </table>
-        </div> <?php else: ?>
+        </div>
+        <?php else: ?>
             <?php if (empty($message) || $message_type == "success"): ?>
                 <div class='message success'>Tidak ada data jadwal program untuk ditampilkan.</div>
             <?php endif; ?>
@@ -285,7 +331,8 @@
             <form id="editForm">
                 <input type="hidden" id="edit-id" name="id">
 
-                <div class="form-group"> <label for="edit-schedule_item_duration">Durasi Program (HH:MM):</label>
+                <div class="form-group">
+                    <label for="edit-schedule_item_duration">Durasi Program (HH:MM):</label>
                     <input type="time" id="edit-schedule_item_duration" name="schedule_item_duration" step="1" required>
                 </div>
 
@@ -310,8 +357,18 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="edit-schedule_author">ID Penulis Jadwal:</label>
-                    <input type="text" id="edit-schedule_author" name="schedule_author" required>
+                    <label for="edit-schedule_author">Penulis Jadwal:</label>
+                    <select id="edit-schedule_author" name="schedule_author" required>
+                        <option value="">Pilih Penulis</option>
+                        <?php
+                        if (!empty($users)) {
+                            foreach ($users as $user) {
+                                // Sesuaikan dengan properti 'ID' dan 'user_publicname' dari API User Anda
+                                echo '<option value="' . htmlspecialchars($user->ID ?? '') . '">' . htmlspecialchars($user->user_publicname ?? '') . '</option>';
+                            }
+                        }
+                        ?>
+                    </select>
                 </div>
 
                 <div class="modal-buttons">
@@ -322,10 +379,66 @@
         </div>
     </div>
 
+    <div id="addModal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close-button" onclick="closeAddModal()">&times;</button>
+            <h3>Tambah Jadwal Program Baru</h3>
+            <form id="addForm">
+                <div class="form-group">
+                    <label for="add-schedule_item_duration">Durasi Program (HH:MM):</label>
+                    <input type="time" id="add-schedule_item_duration" name="schedule_item_duration" step="1" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="add-schedule_item_title">Judul Segmen:</label>
+                    <input type="text" id="add-schedule_item_title" name="schedule_item_title" placeholder="Misal: Berita Utama" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="add-schedule_item_type">Tipe Program:</label>
+                    <input type="text" id="add-schedule_item_type" name="schedule_item_type" placeholder="Misal: Live" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="add-tgl_siaran">Tanggal Siaran:</label>
+                    <input type="date" id="add-tgl_siaran" name="tgl_siaran" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="add-schedule_onair">Waktu Siaran (Tanggal & Jam):</label>
+                    <input type="datetime-local" id="add-schedule_onair" name="schedule_onair" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="add-schedule_author">Penulis Jadwal:</label>
+                    <select id="add-schedule_author" name="schedule_author" required>
+                        <option value="">Pilih Penulis</option>
+                        <?php
+                        if (!empty($users)) {
+                            foreach ($users as $user) {
+                                // Sesuaikan dengan properti 'ID' dan 'user_publicname' dari API User Anda
+                                echo '<option value="' . htmlspecialchars($user->ID ?? '') . '">' . htmlspecialchars($user->user_publicname ?? '') . '</option>';
+                            }
+                        }
+                        ?>
+                    </select>
+                </div>
+
+                <div class="modal-buttons">
+                    <button type="button" class="cancel-button" onclick="closeAddModal()">Batal</button>
+                    <button type="submit" class="save-button">Tambah Jadwal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         // Mendapatkan referensi ke modal
         const editModal = document.getElementById('editModal');
         const editForm = document.getElementById('editForm');
+
+        const addModal = document.getElementById('addModal');
+        const addForm = document.getElementById('addForm');
 
         function openEditModal(id, duration, title, type, date, onair, author) {
             // Mengisi form modal dengan data yang diterima
@@ -335,7 +448,29 @@
             document.getElementById('edit-schedule_item_type').value = type;
             document.getElementById('edit-tgl_siaran').value = date; // YYYY-MM-DD
             document.getElementById('edit-schedule_onair').value = onair; // YYYY-MM-DDTHH:MM
-            document.getElementById('edit-schedule_author').value = author;
+
+            // Set the selected option for the dropdown
+            const authorSelect = document.getElementById('edit-schedule_author');
+            let foundAuthor = false;
+            for (let i = 0; i < authorSelect.options.length; i++) {
+                if (authorSelect.options[i].value === author) { // Assuming 'author' passed is the user ID
+                    authorSelect.options[i].selected = true;
+                    foundAuthor = true;
+                    break;
+                }
+            }
+            // If the author from the schedule is not found in the dropdown options,
+            // you might want to handle it (e.g., set to default, or add a new option)
+            if (!foundAuthor && author) {
+                 // Option to add the author if not found (e.g., if API returned an author not in current user list)
+                 const newOption = document.createElement('option');
+                 newOption.value = author;
+                 newOption.textContent = author; // Display the raw author string
+                 newOption.selected = true;
+                 authorSelect.appendChild(newOption);
+            } else if (!author) {
+                 authorSelect.value = ''; // Select the default "Pilih Penulis" if author is empty
+            }
 
             // Menampilkan modal
             editModal.style.display = 'flex';
@@ -346,6 +481,25 @@
             editModal.style.display = 'none';
         }
 
+        // Fungsi untuk membuka modal tambah
+        function openAddModal() {
+            addForm.reset(); // Mengosongkan form setiap kali modal dibuka
+            // Set default date to today for convenience
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+            const day = String(today.getDate()).padStart(2, '0');
+            document.getElementById('add-tgl_siaran').value = `${year}-${month}-${day}`;
+            document.getElementById('add-schedule_onair').value = `${year}-${month}-${day}T00:00`; // Default time to midnight
+
+            addModal.style.display = 'flex';
+        }
+
+        // Fungsi untuk menutup modal tambah
+        function closeAddModal() {
+            addModal.style.display = 'none';
+        }
+
         // Menutup modal jika mengklik di luar area konten modal
         editModal.addEventListener('click', (event) => {
             if (event.target === editModal) {
@@ -353,7 +507,13 @@
             }
         });
 
-        // --- Handle Form Submission in Modal (AJAX/Fetch API) ---
+        addModal.addEventListener('click', (event) => {
+            if (event.target === addModal) {
+                closeAddModal();
+            }
+        });
+
+        // --- Handle Form Submission in Edit Modal (AJAX/Fetch API) ---
         editForm.addEventListener('submit', function(event) {
             event.preventDefault(); // Mencegah form dari submit biasa (page reload)
 
@@ -401,6 +561,53 @@
             });
 
             // --- Akhir Panggilan API PUT ---
+        });
+
+        // --- Handle Form Submission in Add Modal (AJAX/Fetch API) ---
+        addForm.addEventListener('submit', function(event) {
+            event.preventDefault(); // Mencegah form dari submit biasa (page reload)
+
+            const formData = new FormData(addForm);
+            const jsonData = {};
+            // Ubah FormData menjadi objek JSON
+            formData.forEach((value, key) => {
+                jsonData[key] = value;
+            });
+
+            // Perbaikan format durasi jika hanya HH:MM (dari add_jadwal.php)
+            if (jsonData.schedule_item_duration && jsonData.schedule_item_duration.length === 5) {
+                jsonData.schedule_item_duration += ':00';
+            }
+
+            console.log("Data to add (JSON):", jsonData);
+
+            // URL endpoint API untuk membuat jadwal baru (POST)
+            const addApiUrl = 'https://api.newsnoid.com/jadwal-program'; // Sesuai dengan add_jadwal.php
+
+            // Lakukan Panggilan API POST di SINI
+            fetch(addApiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(jsonData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(errData => { throw new Error(errData.message || `HTTP error! status: ${response.status}`); });
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Add Success:', data);
+                alert('Jadwal baru berhasil ditambahkan!');
+                closeAddModal();
+                location.reload(); // Muat ulang halaman untuk melihat perubahan
+            })
+            .catch((error) => {
+                console.error('Add Error:', error);
+                alert('Gagal menambahkan jadwal baru: ' + error.message);
+            });
         });
     </script>
 
