@@ -109,7 +109,8 @@
                     'user_url' => $user_url
                 ];
 
-                $api_url = 'https://api.newsnoid.com/users'; // Endpoint API untuk menambahkan user
+                // $api_url = 'https://api.newsnoid.com/users'; // Endpoint API untuk menambahkan user
+				$api_url = 'https://api.newsnoid.com/register'; // Ubah endpoint API ini
 
                 $ch = curl_init($api_url);
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
