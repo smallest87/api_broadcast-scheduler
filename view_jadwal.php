@@ -249,8 +249,7 @@
                         <td><?php echo htmlspecialchars($jadwal->schedule_item_type ?? ''); ?></td>
                         <td><?php echo htmlspecialchars($jadwal->tgl_siaran ?? ''); ?></td>
                         <td><?php echo htmlspecialchars($jadwal->schedule_onair ?? ''); ?></td>
-                        <td><?php echo htmlspecialchars($jadwal->schedule_author ?? ''); ?></td>
-                        <td class="action-buttons">
+                        <td><?php echo htmlspecialchars($jadwal->author_name ?? 'N/A'); ?></td> <td class="action-buttons">
                             <button onclick="openEditModal(
                                 '<?php echo htmlspecialchars($jadwal->id ?? ''); ?>',
                                 '<?php echo htmlspecialchars($display_duration); ?>',
@@ -311,7 +310,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="edit-schedule_author">Penulis Jadwal:</label>
+                    <label for="edit-schedule_author">ID Penulis Jadwal:</label>
                     <input type="text" id="edit-schedule_author" name="schedule_author" required>
                 </div>
 
