@@ -69,11 +69,11 @@ $router->addRoute('GET', '/', function() {
             $users_table_status = $stmt_users->rowCount() > 0 ? "Tabel 'users' terdeteksi." : "Tabel 'users' TIDAK ditemukan. Mohon buat tabelnya.";
             error_log("[Status Check] 'users' table status: " . $users_table_status);
 
-            // Test if 'jadwal_program' table exists
-            error_log("[Status Check] Checking 'jadwal_program' table existence.");
-            $stmt_jadwal = $conn->query("SHOW TABLES LIKE 'jadwal_program'");
-            $jadwal_table_status = $stmt_jadwal->rowCount() > 0 ? "Tabel 'jadwal_program' terdeteksi." : "Tabel 'jadwal_program' TIDAK ditemukan. Mohon buat tabelnya.";
-            error_log("[Status Check] 'jadwal_program' table status: " . $jadwal_table_status);
+            // Test if 'bs_schedule' table exists (KOREKSI DI SINI)
+            error_log("[Status Check] Checking 'bs_schedule' table existence.");
+            $stmt_jadwal = $conn->query("SHOW TABLES LIKE 'bs_schedule'"); // <--- DIKOREKSI DARI 'jadwal_program'
+            $jadwal_table_status = $stmt_jadwal->rowCount() > 0 ? "Tabel 'bs_schedule' terdeteksi." : "Tabel 'bs_schedule' TIDAK ditemukan. Mohon buat tabelnya.";
+            error_log("[Status Check] 'bs_schedule' table status: " . $jadwal_table_status);
 
             // Test if 'user_settings' table exists
             error_log("[Status Check] Checking 'user_settings' table existence.");
@@ -105,7 +105,7 @@ $router->addRoute('GET', '/', function() {
         "database_connection" => $db_connection_status,
         "tables_status" => [
             "users" => $users_table_status,
-            "jadwal_program" => $jadwal_table_status,
+            "jadwal_program" => $jadwal_table_status, // Nama di respons tetap 'jadwal_program' untuk konsistensi API
             "user_settings" => $settings_table_status
         ],
         "message" => "Akses endpoint API lain untuk fungsionalitas CRUD (e.g., /users, /jadwal-program, /user-settings, /login)"
@@ -116,9 +116,14 @@ $router->addRoute('GET', '/', function() {
 $router->addRoute('GET', '/users', ['UserController', 'index']);
 $router->addRoute('GET', '/users/{id}', ['UserController', 'show']);
 $router->addRoute('POST', '/users', ['UserController', 'store']);
+
+// Rute khusus untuk registrasi pengguna
+$router->addRoute('POST', '/register', ['UserController', 'store']); // Ini akan menggunakan logika yang sama dengan 'store'
+// Rute yang sudah ada untuk login
+$router->addRoute('POST', '/login', ['UserController', 'login']);
+
 $router->addRoute('PUT', '/users/{id}', ['UserController', 'update']);
 $router->addRoute('DELETE', '/users/{id}', ['UserController', 'destroy']);
-$router->addRoute('POST', '/login', ['UserController', 'login']);
 
 // JadwalProgram Routes
 $router->addRoute('GET', '/jadwal-program', ['JadwalProgramController', 'index']);
@@ -135,5 +140,13 @@ $router->addRoute('POST', '/user-settings', ['UserSettingsController', 'store'])
 $router->addRoute('PUT', '/user-settings/{id}', ['UserSettingsController', 'update']);
 $router->addRoute('PUT', '/user-settings/key/{key}', ['UserSettingsController', 'updateByKey']);
 $router->addRoute('DELETE', '/user-settings/{id}', ['UserSettingsController', 'destroy']);
+
+// Contoh dalam file konfigurasi router Anda (misalnya, index.php atau routes.php)
+
+// Rute RESTful lainnya untuk manajemen pengguna (opsional, tergantung kebutuhan)
+// $router->addRoute('GET', '/users', ['App\Controllers\UserController', 'index']);
+// $router->addRoute('GET', '/users/{id}', ['App\Controllers\UserController', 'show']);
+// $router->addRoute('PUT', '/users/{id}', ['App\Controllers\UserController', 'update']);
+// $router->addRoute('DELETE', '/users/{id}', ['App\Controllers\UserController', 'destroy']);
 
 $router->dispatch();
