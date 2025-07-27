@@ -117,6 +117,9 @@ $router->addRoute('GET', '/users', ['UserController', 'index']);
 $router->addRoute('GET', '/users/{id}', ['UserController', 'show']);
 $router->addRoute('POST', '/users', ['UserController', 'store']);
 
+// Menu
+$router->addRoute('GET', '/menu', ['SettingController', 'index']);
+
 // Rute khusus untuk registrasi pengguna
 $router->addRoute('POST', '/register', ['UserController', 'store']); // Ini akan menggunakan logika yang sama dengan 'store'
 // Rute yang sudah ada untuk login

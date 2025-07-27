@@ -212,7 +212,8 @@ class UserController extends BaseController // Extend BaseController
                     echo json_encode([
                         "message" => "Successful login.",
                         "jwt" => $jwt,
-                        "user_email" => $this->user->user_email // Sesuaikan dengan email
+                        "user_email" => $this->user->user_email,
+                        "user_publicname" => $this->user->user_publicname // Sesuaikan dengan email
                     ]);
                 } catch (\Exception $e) {
                     http_response_code(500);
