@@ -144,6 +144,8 @@ $router->addRoute('PUT', '/user-settings/{id}', ['UserSettingsController', 'upda
 $router->addRoute('PUT', '/user-settings/key/{key}', ['UserSettingsController', 'updateByKey']);
 $router->addRoute('DELETE', '/user-settings/{id}', ['UserSettingsController', 'destroy']);
 
+$router->addRoute('GET', '/api/v1/presscompanyassoc', ['PressCompanyAssocController', 'index']);
+
 // Contoh dalam file konfigurasi router Anda (misalnya, index.php atau routes.php)
 
 // Rute RESTful lainnya untuk manajemen pengguna (opsional, tergantung kebutuhan)
